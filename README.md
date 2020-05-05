@@ -1,5 +1,6 @@
 # Auvant
 AUtomated VulnerAbility huNTer
+
 Automate vulnerability scanning utilizing OpenVas
 ### Examples:
 ```
