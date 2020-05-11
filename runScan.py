@@ -18,6 +18,8 @@
 # changelog:
 #   5.4.2020 -
 #       initial ground breaking
+#   5.11.2020 -
+#       Update to include some fault tolerance when checking openvas for updates.
 #
 # ---------------------------------------------------------------
 # Example:
@@ -47,12 +49,12 @@ def hello():
     print ("                          Auvant: The Wrapper for OpenVAS 7.0.3")
     print ('-------------------------------------------------------------------------------------')
     print ("              If Target ID = 400, exit script. ^C to exit, and clear all Targets. ")
-    print ("                            You may need to clear tasks.\n\n")
-    print ('-------------------------------------------------------------------------------------')
+    print ("                            You may need to clear tasks.")
+    print ('-------------------------------------------------------------------------------------\n')
 
-def StandardOpenVasScan():
-    name = sys.argv[1]
-    target = sys.argv[2]
+def StandardOpenVasScan(name, target):
+    name = name
+    target = target
 
     #Delete Target with same name (ie. previous target)
     GetTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " -T | grep " + name + " | cut -d' ' -f1"
@@ -68,9 +70,9 @@ def StandardOpenVasScan():
     print("\nTarget ID  = " + TargetID + "\n")
     return TargetID
 
-def CredentialedWindowsOpenVasScan():
-    name = sys.argv[1]
-    target = sys.argv[2]
+def CredentialedWindowsOpenVasScan(name, target):
+    name = name
+    target = target
 
     #Delete Target with same name (ie. previous target)
     GetTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " -T | grep -w " + name + " | cut -d' ' -f1"
@@ -86,9 +88,9 @@ def CredentialedWindowsOpenVasScan():
     print ("\nTarget ID  = "+TargetID+"\n")
     return TargetID
 
-def CredentialedLinuxOpenVasScan():
-    name = sys.argv[1]
-    target = sys.argv[2]
+def CredentialedLinuxOpenVasScan(name, target):
+    name = name
+    target = target
 
     #Delete Target with same name (ie. previous target)
     GetTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " -T | grep " + name + " | cut -d' ' -f1"
@@ -104,8 +106,10 @@ def CredentialedLinuxOpenVasScan():
     print("\nTarget ID  = " + TargetID + "\n")
     return TargetID
 
-def ContinueScan(TargetID):
-    name = sys.argv[1]
+def ContinueScan(name, TargetID):
+    name = name
+    now = datetime.now()
+    dt_string = now.strftime("%d-%m-%Y-%H-%M")
 
     #Create Task at 'Full and fast' scan level (ie. Config id = daba56c8-73ec-11df-a475-002264764cea)
     print("Creating Task...")
@@ -121,14 +125,22 @@ def ContinueScan(TargetID):
     #Check if Task is done
     time.sleep(5)
     CheckDoneCMD = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" -G | grep "+TaskID
-    CheckDone = subprocess.check_output([CheckDoneCMD], shell=True)
-    print("Checking if task is complete")
-    time.sleep(360)
+    try:
+        CheckDone = subprocess.check_output([CheckDoneCMD], shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        pass
+    print("Checking if task is complete...")
+    time.sleep(225)
 
     while 'Done' not in CheckDone:
         print("...")
         time.sleep(35)
-        CheckDone = subprocess.check_output([CheckDoneCMD], shell=True)
+        try:
+            CheckDone = subprocess.check_output([CheckDoneCMD], shell=True, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as err:
+            print(".....")
+            time.sleep(60)
+            pass
         if 'Done' in CheckDone:
             print("Getting CSV report")
 
@@ -141,6 +153,7 @@ def ContinueScan(TargetID):
             GetReportCMD = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<get_reports report_id=\"" + ReportID + "\" format_id=\"c1645568-627a-11e3-a660-406186ea4fc5\"/>' -i | sed -n 2p | sed \"s/.*c5\\\">//g\" | base64 -d > "+name+"-"+dt_string+".csv"
             GetReport = subprocess.check_output([GetReportCMD], shell=True)
             time.sleep(3)
+            return GetReport
 
             #Cleanup task and Target.
             CleanupTask = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_task task_id=\"" + TaskID + "\"/>'"
@@ -157,32 +170,31 @@ def check(Ip):
                 25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)'''
 
     if (re.search(regex, Ip)):
-        #print("Valid Ip address")
-        now = datetime.now()
-        dt_string = now.strftime("%d-%m-%Y-%H-%M")
+        pass
     else:
         print("Invalid Ip address")
         sys.exit()
 
+def StartScan(name, ip, scantype):
+    check(ip)
 
-check(sys.argv[2])
+    if scantype == "Standard":
+        hello()
+        print ("Creating Noncredentialed Target...")
+        ContinueScan(name, StandardOpenVasScan(name, ip))
 
-if sys.argv[3] == "Standard":
-    hello()
-    print ("Creating Noncredentialed Target...")
-    ContinueScan(StandardOpenVasScan())
+    elif scantype == "Windows":
+        hello()
+        print ("Creating Credentialed Windows Target...")
+        ContinueScan(name, CredentialedWindowsOpenVasScan(name, ip))
 
-elif sys.argv[3] == "Windows":
-    hello()
-    print ("Creating Credentialed Windows Target...")
-    ContinueScan(CredentialedWindowsOpenVasScan())
+    elif scantype == "Linux":
+        hello()
+        print ("Creating Credentialed Linux Target...")
+        ContinueScan(name, CredentialedLinuxOpenVasScan(name, ip))
 
-elif sys.argv[3] == "Linux":
-    hello()
-    print ("Creating Credentialed Linux Target...")
-    ContinueScan(CredentialedLinuxOpenVasScan())
+    else:
+        print ("Invalid Command Syntax, please see example.")
+        sys.exit()
 
-else:
-    print ("Invalid Command Syntax, please see example.")
-    sys.exit()
-
+StartScan(sys.argv[1], sys.argv[2], sys.argv[3])
