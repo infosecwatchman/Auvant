@@ -58,10 +58,18 @@ def StandardOpenVasScan(name, target):
 
     #Delete Target with same name (ie. previous target)
     GetTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " -T | grep " + name + " | cut -d' ' -f1"
-    TargetID = subprocess.check_output([GetTarget], shell=True)
+    try:
+        TargetID = subprocess.check_output([GetTarget], shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        sys.exit()
     TargetID = TargetID.replace("\n", "")
     DeleteTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_target target_id=\"" + TargetID + "\"/>'"
-    subprocess.check_output([DeleteTarget], shell=True)
+    try:
+        subprocess.check_output([DeleteTarget], shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        sys.exit()
 
     #Create Target
     CreateTarget = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<create_target> <name>"+name+"</name> <hosts>"+target+"</hosts> </create_target>' | sed \"s/.*id=//g\" | cut -d'\"' -f 2 "
@@ -75,11 +83,19 @@ def CredentialedWindowsOpenVasScan(name, target):
     target = target
 
     #Delete Target with same name (ie. previous target)
-    GetTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " -T | grep -w " + name + " | cut -d' ' -f1"
-    TargetID = subprocess.check_output([GetTarget], shell=True)
+    GetTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " -T | grep " + name + " | cut -d' ' -f1"
+    try:
+        TargetID = subprocess.check_output([GetTarget], shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Failed to authenticate... Verify credentials and host IP is correct on lines 32-36.")
+        sys.exit()
     TargetID = TargetID.replace("\n", "")
     DeleteTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_target target_id=\"" + TargetID + "\"/>'"
-    subprocess.check_output([DeleteTarget], shell=True)
+    try:
+        subprocess.check_output([DeleteTarget], shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        sys.exit()
 
     #Create Target
     CreateTarget = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<create_target> <name>"+name+"</name> <hosts>"+target+"</hosts><smb_credential id=\""+WindowsSMBCred+"\"/> </create_target>' | sed \"s/.*id=//g\" | cut -d'\"' -f 2 "
@@ -94,10 +110,18 @@ def CredentialedLinuxOpenVasScan(name, target):
 
     #Delete Target with same name (ie. previous target)
     GetTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " -T | grep " + name + " | cut -d' ' -f1"
-    TargetID = subprocess.check_output([GetTarget], shell=True)
+    try:
+        TargetID = subprocess.check_output([GetTarget], shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Failed to authenticate... Verify credentials and host IP is correct on lines 32-36.")
+        sys.exit()
     TargetID = TargetID.replace("\n", "")
     DeleteTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_target target_id=\"" + TargetID + "\"/>'"
-    subprocess.check_output([DeleteTarget], shell=True)
+    try:
+        subprocess.check_output([DeleteTarget], shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        sys.exit()
 
     #Create Target
     CreateTarget = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<create_target> <name>"+name+"</name> <hosts>"+target+"</hosts><ssh_credential id=\""+LinuxSSHCred+"\"/> </create_target>' | sed \"s/.*id=//g\" | cut -d'\"' -f 2 "
@@ -110,6 +134,11 @@ def ContinueScan(name, TargetID):
     name = name
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y-%H-%M")
+
+    #Check if Target = 400
+    if TargetID == '400':
+        print("Target with name already exists, delete target and associated tasks with '"+name+"' or change name in command line.")
+        sys.exit()
 
     #Create Task at 'Full and fast' scan level (ie. Config id = daba56c8-73ec-11df-a475-002264764cea)
     print("Creating Task...")
@@ -130,7 +159,7 @@ def ContinueScan(name, TargetID):
     except subprocess.CalledProcessError as err:
         pass
     print("Checking if task is complete...")
-    time.sleep(225)
+    time.sleep(200)
 
     while 'Done' not in CheckDone:
         print("...")
@@ -150,18 +179,21 @@ def ContinueScan(name, TargetID):
             ReportID = ReportID.replace("\n","")
 
             #Report CSV report (To change report, change c1645568-627a-11e3-a660-406186ea4fc5 to your desired report format's ID)
-            GetReportCMD = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<get_reports report_id=\"" + ReportID + "\" format_id=\"c1645568-627a-11e3-a660-406186ea4fc5\"/>' -i | sed -n 2p | sed \"s/.*c5\\\">//g\" | base64 -d > "+name+"-"+dt_string+".csv"
+            GetReportCMD = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<get_reports report_id=\"" + ReportID + "\" format_id=\"c1645568-627a-11e3-a660-406186ea4fc5\"/>' -i | sed -n 2p | sed \"s/.*c5\\\">//g\" | base64 -d "
             GetReport = subprocess.check_output([GetReportCMD], shell=True)
             time.sleep(3)
-            return GetReport
+            #Write CSV
+            print("Report written to ./output/"+name+"-"+dt_string+".csv")
+            CSVReport = open("./output/"+name+"-"+dt_string+".csv", "w")
+            CSVReport.write(GetReport)
+            CSVReport.close()
 
             #Cleanup task and Target.
             CleanupTask = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_task task_id=\"" + TaskID + "\"/>'"
             subprocess.check_output([CleanupTask], shell=True)
-            print("Report wrote to "+name+"-"+dt_string+".csv")
             DeleteTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_target target_id=\"" + TargetID + "\"/>'"
             subprocess.check_output([DeleteTarget], shell=True)
-            break
+            return GetReport
 
 def check(Ip):
     regex = '''^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.( 
