@@ -40,8 +40,7 @@ from configparser import ConfigParser
 # Credentials:
 #Read config.ini file
 config_object = ConfigParser()
-config_object.read("config.ini")
-Credentials = config_object["Credentials"]
+config_object.read("../config.ini")
 
 Username = Credentials["Username"]
 Password = Credentials["Password"]
@@ -190,8 +189,8 @@ def ContinueScan(name, TargetID):
             GetReport = subprocess.check_output([GetReportCMD], shell=True)
             time.sleep(3)
             #Write CSV
-            print("Report written to ./output/"+name+"-"+dt_string+".csv")
-            CSVReport = open("./output/"+name+"-"+dt_string+".csv", "w")
+            print("Report written to ../output/"+name+"-"+dt_string+".csv")
+            CSVReport = open("../output/"+name+"-"+dt_string+".csv", "w")
             CSVReport.write(GetReport)
             CSVReport.close()
 
@@ -236,4 +235,3 @@ def StartScan(name, ip, scantype):
         print ("Invalid Command Syntax, please see example.")
         sys.exit()
 
-StartScan(sys.argv[1], sys.argv[2], sys.argv[3])
