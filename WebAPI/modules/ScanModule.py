@@ -29,18 +29,19 @@
 # ---------------------------------------------------------------
 # Make sure to edit the following section before running:
 
-import thread
-import sys
+import re
 import subprocess
+import sys
 import time
 from datetime import datetime
-import re
+
 from configparser import ConfigParser
 
 # Credentials:
 #Read config.ini file
 config_object = ConfigParser()
-config_object.read("../config.ini")
+config_object.read("../../config.ini")
+Credentials = config_object["Credentials"]
 
 Username = Credentials["Username"]
 Password = Credentials["Password"]
@@ -67,21 +68,21 @@ def StandardOpenVasScan(name, target):
     try:
         TargetID = subprocess.check_output([GetTarget], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
-        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        #print("Failed to authenticate... Verify credentials and host IP is correct.")
         sys.exit()
     TargetID = TargetID.replace("\n", "")
     DeleteTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_target target_id=\"" + TargetID + "\"/>'"
     try:
         subprocess.check_output([DeleteTarget], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
-        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        #print("Failed to authenticate... Verify credentials and host IP is correct.")
         sys.exit()
 
     #Create Target
     CreateTarget = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<create_target> <name>"+name+"</name> <hosts>"+target+"</hosts> </create_target>' | sed \"s/.*id=//g\" | cut -d'\"' -f 2 "
     TargetID = subprocess.check_output([CreateTarget],shell=True)
     TargetID = TargetID.replace("\n", "")
-    print("\nTarget ID  = " + TargetID + "\n")
+    #print("\nTarget ID  = " + TargetID + "\n")
     return TargetID
 
 def CredentialedWindowsOpenVasScan(name, target):
@@ -93,21 +94,21 @@ def CredentialedWindowsOpenVasScan(name, target):
     try:
         TargetID = subprocess.check_output([GetTarget], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
-        print("Failed to authenticate... Verify credentials and host IP is correct on lines 32-36.")
+        #print("Failed to authenticate... Verify credentials and host IP is correct on lines 32-36.")
         sys.exit()
     TargetID = TargetID.replace("\n", "")
     DeleteTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_target target_id=\"" + TargetID + "\"/>'"
     try:
         subprocess.check_output([DeleteTarget], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
-        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        #print("Failed to authenticate... Verify credentials and host IP is correct.")
         sys.exit()
 
     #Create Target
     CreateTarget = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<create_target> <name>"+name+"</name> <hosts>"+target+"</hosts><smb_credential id=\""+WindowsSMBCred+"\"/> </create_target>' | sed \"s/.*id=//g\" | cut -d'\"' -f 2 "
     TargetID = subprocess.check_output([CreateTarget],shell=True)
     TargetID = TargetID.replace("\n", "")
-    print ("\nTarget ID  = "+TargetID+"\n")
+    #print ("\nTarget ID  = "+TargetID+"\n")
     return TargetID
 
 def CredentialedLinuxOpenVasScan(name, target):
@@ -119,21 +120,21 @@ def CredentialedLinuxOpenVasScan(name, target):
     try:
         TargetID = subprocess.check_output([GetTarget], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
-        print("Failed to authenticate... Verify credentials and host IP is correct on lines 32-36.")
+        #print("Failed to authenticate... Verify credentials and host IP is correct on lines 32-36.")
         sys.exit()
     TargetID = TargetID.replace("\n", "")
     DeleteTarget = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml='<delete_target target_id=\"" + TargetID + "\"/>'"
     try:
         subprocess.check_output([DeleteTarget], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
-        print("Failed to authenticate... Verify credentials and host IP is correct.")
+        #print("Failed to authenticate... Verify credentials and host IP is correct.")
         sys.exit()
 
     #Create Target
     CreateTarget = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<create_target> <name>"+name+"</name> <hosts>"+target+"</hosts><ssh_credential id=\""+LinuxSSHCred+"\"/> </create_target>' | sed \"s/.*id=//g\" | cut -d'\"' -f 2 "
     TargetID = subprocess.check_output([CreateTarget],shell=True)
     TargetID = TargetID.replace("\n", "")
-    print("\nTarget ID  = " + TargetID + "\n")
+    #print("\nTarget ID  = " + TargetID + "\n")
     return TargetID
 
 def ContinueScan(name, TargetID):
@@ -143,17 +144,17 @@ def ContinueScan(name, TargetID):
 
     #Check if Target = 400
     if TargetID == '400':
-        print("Target with name already exists, delete target and associated tasks with '"+name+"' or change name in command line.")
+        #print("Target with name already exists, delete target and associated tasks with '"+name+"' or change name in command line.")
         sys.exit()
 
     #Create Task at 'Full and fast' scan level (ie. Config id = daba56c8-73ec-11df-a475-002264764cea)
-    print("Creating Task...")
+    #print("Creating Task...")
     CreateTask = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<create_task><name>"+name+"</name><config id=\"daba56c8-73ec-11df-a475-002264764cea\"/><target id=\""+TargetID+"\"/></create_task>' | sed \"s/.*id=//g\" | cut -d'\"' -f 2 "
     TaskID = subprocess.check_output([CreateTask],shell=True)
     TaskID = TaskID.replace("\n","")
 
     #Start the task that was created above
-    print("Starting Task...")
+    #print("Starting Task...")
     StartTaskCMD = "omp -h "+OpenVasServer+" -u "+Username+" -w "+Password+" --xml='<start_task task_id=\""+TaskID+"\"/>'"
     StartTask = subprocess.check_output([StartTaskCMD], shell=True)
 
@@ -164,20 +165,20 @@ def ContinueScan(name, TargetID):
         CheckDone = subprocess.check_output([CheckDoneCMD], shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
         pass
-    print("Checking if task is complete...")
+    #print("Checking if task is complete...")
     time.sleep(200)
 
     while 'Done' not in CheckDone:
-        print("...")
+        #print("...")
         time.sleep(35)
         try:
             CheckDone = subprocess.check_output([CheckDoneCMD], shell=True, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            print(".....")
+            #print(".....")
             time.sleep(60)
             pass
         if 'Done' in CheckDone:
-            print("Getting CSV report")
+            #print("Getting CSV report")
 
             #Get Report ID and format it
             GetReportID = "omp -h " + OpenVasServer + " -u " + Username + " -w " + Password + " --xml=' <get_tasks task_id=\"" + TaskID + "\"/>' -i | grep -i 'report id' -m 1| cut -d '\"' -f 2"
@@ -189,8 +190,8 @@ def ContinueScan(name, TargetID):
             GetReport = subprocess.check_output([GetReportCMD], shell=True)
             time.sleep(3)
             #Write CSV
-            print("Report written to ../output/"+name+"-"+dt_string+".csv")
-            CSVReport = open("../output/"+name+"-"+dt_string+".csv", "w")
+            #print("Report written to ../output/"+name+"-"+dt_string+".csv")
+            CSVReport = open("../../Solo/output/"+name+"-"+dt_string+".csv", "w")
             CSVReport.write(GetReport)
             CSVReport.close()
 
@@ -210,28 +211,28 @@ def check(Ip):
     if (re.search(regex, Ip)):
         pass
     else:
-        print("Invalid Ip address")
+        #print("Invalid Ip address")
         sys.exit()
 
 def StartScan(name, ip, scantype):
     check(ip)
 
     if scantype == "Standard":
-        hello()
-        print ("Creating Noncredentialed Target...")
+        #hello()
+        #print ("Creating Noncredentialed Target...")
         ContinueScan(name, StandardOpenVasScan(name, ip))
 
     elif scantype == "Windows":
-        hello()
-        print ("Creating Credentialed Windows Target...")
+        #hello()
+        #print ("Creating Credentialed Windows Target...")
         ContinueScan(name, CredentialedWindowsOpenVasScan(name, ip))
 
     elif scantype == "Linux":
-        hello()
-        print ("Creating Credentialed Linux Target...")
+        #hello()
+        #print ("Creating Credentialed Linux Target...")
         ContinueScan(name, CredentialedLinuxOpenVasScan(name, ip))
 
     else:
-        print ("Invalid Command Syntax, please see example.")
+        #print ("Invalid Command Syntax, please see example.")
         sys.exit()
 
